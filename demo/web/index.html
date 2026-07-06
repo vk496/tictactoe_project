@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tic-Tac-Toe</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <h1>Tic-Tac-Toe</h1>
+      <a class="slides-link" id="slides-link" target="_blank" rel="noopener">Architecture slides →</a>
+    </header>
+
+    <section class="panel">
+      <label>Your name
+        <input id="userId" type="text" placeholder="e.g. alice" />
+      </label>
+      <label>Lobby URL
+        <input id="lobby" type="text" />
+      </label>
+      <div class="row">
+        <label>Board size
+          <input id="boardSize" type="number" min="3" value="3" />
+        </label>
+        <label>Win length
+          <input id="winLength" type="number" min="1" value="3" />
+        </label>
+      </div>
+    </section>
+
+    <section class="panel actions">
+      <button id="newGame">New game</button>
+      <button id="refresh">Refresh</button>
+    </section>
+
+    <section class="panel">
+      <h2>Pending games</h2>
+      <ul id="pending" class="pending"></ul>
+    </section>
+
+    <section class="panel">
+      <p id="status" class="status">Enter a name and start or join a game.</p>
+      <div id="board" class="board"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Your stats</h2>
+      <p id="stats" class="stats">—</p>
+    </section>
+
+    <section class="panel">
+      <h2>Active games</h2>
+      <ul id="active" class="pending"></ul>
+    </section>
+
+    <section class="panel">
+      <h2>Leaderboard</h2>
+      <ol id="leaderboard" class="leaderboard"></ol>
+    </section>
+
+    <section class="panel links">
+      <h2>Dashboards</h2>
+      <a id="link-slides" class="slides-link" target="_blank" rel="noopener">Architecture slides →</a>
+      <a href="/docs.html" target="_blank" rel="noopener">API reference (OpenAPI) →</a>
+      <a id="link-rabbitmq" target="_blank" rel="noopener">RabbitMQ (admin / admin)</a>
+      <a id="link-traefik" target="_blank" rel="noopener">Traefik dashboard</a>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

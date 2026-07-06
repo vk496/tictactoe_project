@@ -1,0 +1,105 @@
+name: tictactoe
+
+# `docker compose up` runs the game (UI + API) behind a Traefik edge on port 8000,
+# path-routed on one origin (no CORS). The slides and the two dashboards each get
+# their own port (the Slidev deck must be served at an origin root):
+#
+#   http://localhost:8000              game (UI + API)
+#   http://localhost:8100              architecture deck
+#   http://localhost:8999              RabbitMQ dashboard (admin/admin)
+#   http://localhost:8090/dashboard/   Traefik dashboard
+#
+# The backend (lobby, worker, gateway, broker) is the reviewable case study; the
+# web UI, slides, and Traefik routing live under ./demo.
+
+services:
+  traefik:
+    image: traefik:v3.5
+    command:
+      - --entryPoints.web.address=:80
+      - --entryPoints.traefik.address=:8090
+      - --providers.file.filename=/etc/traefik/dynamic.yml
+      - --api.dashboard=true
+      - --api.insecure=true # serves the dashboard on the traefik entrypoint (:8090)
+    ports:
+      - "8000:80"
+      - "8090:8090"
+    volumes:
+      - ./demo/traefik/dynamic.yml:/etc/traefik/dynamic.yml:ro
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+    ports:
+      - "8999:15672" # management UI, exposed directly (not via Traefik)
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  # One image, three roles — the role is the command.
+  lobby:
+    image: tictactoe-backend
+    build: { context: backend }
+    command: ["lobby"]
+    environment:
+      BOARD_SIZE: ${BOARD_SIZE:-3}
+      WIN_LENGTH: ${WIN_LENGTH:-3}
+      # GATEWAY_URL unset ⇒ worker routes are relative (/w/<token>), same-origin.
+      AMQP_URL: amqp://admin:admin@rabbitmq:5672/
+      ROUTING_SECRET: ${ROUTING_SECRET:-dev-insecure-change-me}
+    ports:
+      - "8082:8080" # direct gRPC / Connect access for tooling (optional)
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    image: tictactoe-backend
+    build: { context: backend }
+    command: ["worker"]
+    environment:
+      AMQP_URL: amqp://admin:admin@rabbitmq:5672/
+      WORKER_MAX_GAMES: ${WORKER_MAX_GAMES:-200}
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    deploy:
+      replicas: 3
+    restart: unless-stopped
+
+  gateway:
+    image: tictactoe-backend
+    build: { context: backend }
+    command: ["gateway"]
+    environment:
+      LOBBY_ADDR: http://lobby:8080
+      ROUTING_SECRET: ${ROUTING_SECRET:-dev-insecure-change-me}
+    depends_on:
+      - lobby
+    restart: unless-stopped
+
+  # --- demo (not part of the case-study review; source under ./demo) ---
+
+  web:
+    image: nginx:alpine
+    volumes:
+      - ./demo/web:/usr/share/nginx/html:ro
+      - ./demo/web-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - gateway
+    restart: unless-stopped
+
+  slides:
+    build:
+      context: demo
+      dockerfile: slides.Dockerfile
+    ports:
+      - "8100:80" # served at its own origin root (Slidev can't run under a subpath)
+    restart: unless-stopped

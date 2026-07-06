@@ -1,0 +1,28 @@
+# Traefik dynamic configuration (file provider). Routing is by path only — no host
+# matching, no docker socket. Everything is on entrypoint :80, so one origin ⇒ no
+# CORS. The API routes win by priority; the catch-all UI route is lowest.
+http:
+  routers:
+    # API + worker-move calls go to the gateway, plus the generated OpenAPI spec.
+    # Worker routes are relative, so the browser stays same-origin.
+    api:
+      rule: "PathPrefix(`/tictactoe.v1.Lobby/`) || PathPrefix(`/w/`) || Path(`/openapi.yaml`)"
+      service: gateway
+      entryPoints: [web]
+      priority: 100
+    # Everything else is the static UI.
+    app:
+      rule: "PathPrefix(`/`)"
+      service: web
+      entryPoints: [web]
+      priority: 1
+
+  services:
+    web:
+      loadBalancer:
+        servers:
+          - url: "http://web:80"
+    gateway:
+      loadBalancer:
+        servers:
+          - url: "http://gateway:8080"
