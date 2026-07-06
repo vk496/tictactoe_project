@@ -1,0 +1,63 @@
+syntax = "proto3";
+
+package tictactoe.v1;
+
+import "gnostic/openapi/v3/annotations.proto";
+
+option go_package = "github.com/vk496/tictactoe_project/api/gen/tictactoev1;tictactoev1";
+
+// The contents of a single board cell.
+enum Mark {
+  // Empty cell.
+  MARK_EMPTY = 0;
+  // Placed by the creator, who always moves first.
+  MARK_X = 1;
+  // Placed by the opponent who joined.
+  MARK_O = 2;
+}
+
+// The lifecycle of a game. The lobby reports the matchmaking states
+// (PENDING / ASSIGNED / ABORTED); the worker reports the in-play states
+// (ACTIVE / WON / DRAWN) on the board itself.
+enum GameStatus {
+  GAME_STATUS_UNSPECIFIED = 0;
+  // Created and waiting for an opponent to join.
+  GAME_STATUS_PENDING = 1;
+  // A worker is hosting the game; play at the returned worker route.
+  GAME_STATUS_ASSIGNED = 2;
+  // In progress, waiting for the next move.
+  GAME_STATUS_ACTIVE = 3;
+  // Ended: one player made a winning line.
+  GAME_STATUS_WON = 4;
+  // Ended: the board filled with no winner.
+  GAME_STATUS_DRAWN = 5;
+  // Cancelled by the server (e.g. abandoned, or the hosting worker was lost).
+  GAME_STATUS_ABORTED = 6;
+}
+
+// One row of the board, left to right.
+message Row {
+  repeated Mark cells = 1;
+}
+
+// A full snapshot of a game, returned by the Worker after a move or on demand.
+message GameView {
+  // The game this snapshot is for.
+  string game_id = 1 [(gnostic.openapi.v3.property) = {example: {yaml: "'665f1e8c9a2b4d3f01a2b3c4'"}}];
+  // ACTIVE until the game ends, then WON or DRAWN.
+  GameStatus status = 2;
+  // The board, top row first.
+  repeated Row rows = 3;
+  // Board dimension N (N×N).
+  int32 board_size = 4;
+  // Marks in a row needed to win (K ≤ N).
+  int32 win_length = 5;
+  // The player who moves first (mark X).
+  string player_x = 6 [(gnostic.openapi.v3.property) = {example: {yaml: "'alice'"}}];
+  // The player who joined (mark O).
+  string player_o = 7 [(gnostic.openapi.v3.property) = {example: {yaml: "'bob'"}}];
+  // Whose turn it is; empty once the game has ended.
+  string turn_user_id = 8 [(gnostic.openapi.v3.property) = {example: {yaml: "'alice'"}}];
+  // The winner's user id; empty on a draw or while still in progress.
+  string winner_id = 9 [(gnostic.openapi.v3.property) = {example: {yaml: "'alice'"}}];
+}

@@ -1,0 +1,142 @@
+syntax = "proto3";
+
+package tictactoe.v1;
+
+import "common.proto";
+import "gnostic/openapi/v3/annotations.proto";
+
+option go_package = "github.com/vk496/tictactoe_project/api/gen/tictactoev1;tictactoev1";
+
+// Lobby is the single authority: matchmaking and win/loss/draw stats. Clients
+// create and join games here and poll for assignment; actual moves go to the
+// Worker that ends up hosting the game.
+// Every method is unary and served over HTTP POST — this is an RPC API (Connect,
+// which also speaks gRPC and gRPC-Web, both POST-only), not a REST resource API.
+service Lobby {
+  // Create a new game and wait for an opponent. The caller becomes player X.
+  rpc CreateGame(CreateGameRequest) returns (CreateGameResponse);
+  // List games that are open for an opponent to join.
+  rpc ListPendingGames(ListPendingGamesRequest) returns (ListPendingGamesResponse);
+  // List games currently being played.
+  rpc ListActiveGames(ListActiveGamesRequest) returns (ListActiveGamesResponse);
+  // Join a pending game as player O. Of many racing joiners, exactly one wins.
+  rpc JoinGame(JoinGameRequest) returns (JoinGameResponse);
+  // Poll a game's status; once ASSIGNED it returns the worker route to play at.
+  rpc GetGame(GetGameRequest) returns (GetGameResponse);
+  // Read one player's win/loss/draw record.
+  rpc GetStats(GetStatsRequest) returns (GetStatsResponse);
+  // The top players ranked by wins.
+  rpc Leaderboard(LeaderboardRequest) returns (LeaderboardResponse);
+}
+
+message CreateGameRequest {
+  // The creator's name; also their identity for making moves.
+  string user_id = 1 [(gnostic.openapi.v3.property) = {example: {yaml: "'alice'"}}];
+  // Board dimension N (N×N). 0 uses the server default; minimum 3.
+  int32 board_size = 2;
+  // Marks in a row needed to win. 0 uses the server default; must be ≤ board_size.
+  int32 win_length = 3;
+}
+
+message CreateGameResponse {
+  // Id of the created game; pass it to JoinGame / GetGame.
+  string game_id = 1 [(gnostic.openapi.v3.property) = {example: {yaml: "'665f1e8c9a2b4d3f01a2b3c4'"}}];
+  // PENDING until an opponent joins.
+  GameStatus status = 2;
+}
+
+message ListPendingGamesRequest {
+  // Maximum games to return; 0 means the server default.
+  int32 limit = 1;
+}
+
+// A game waiting for an opponent.
+message PendingGame {
+  string game_id = 1;
+  // The player who created it and is waiting.
+  string creator_id = 2;
+  // When it was created (Unix seconds).
+  int64 created_at_unix = 3;
+  int32 board_size = 4;
+  int32 win_length = 5;
+}
+
+message ListPendingGamesResponse {
+  repeated PendingGame games = 1;
+}
+
+message ListActiveGamesRequest {
+  // Maximum games to return; 0 means the server default.
+  int32 limit = 1;
+}
+
+// A game in progress.
+message ActiveGame {
+  string game_id = 1;
+  string player_x = 2;
+  string player_o = 3;
+  int32 board_size = 4;
+  int32 win_length = 5;
+  // When play started (Unix seconds).
+  int64 started_at_unix = 6;
+}
+
+message ListActiveGamesResponse {
+  repeated ActiveGame games = 1;
+}
+
+message LeaderboardRequest {
+  // Maximum entries to return; 0 means the server default.
+  int32 limit = 1;
+}
+
+// One player's standing on the leaderboard.
+message LeaderboardEntry {
+  string user_id = 1;
+  int64 wins = 2;
+  int64 losses = 3;
+  int64 draws = 4;
+}
+
+message LeaderboardResponse {
+  // Ranked best first (most wins, then fewest losses).
+  repeated LeaderboardEntry entries = 1;
+}
+
+message JoinGameRequest {
+  // The pending game to join.
+  string game_id = 1 [(gnostic.openapi.v3.property) = {example: {yaml: "'665f1e8c9a2b4d3f01a2b3c4'"}}];
+  // The joiner's name; becomes player O. Must differ from the creator.
+  string user_id = 2 [(gnostic.openapi.v3.property) = {example: {yaml: "'bob'"}}];
+}
+
+message JoinGameResponse {
+  string game_id = 1;
+  // Still PENDING until a worker picks the game up; poll GetGame for ASSIGNED.
+  GameStatus status = 2;
+}
+
+message GetGameRequest {
+  string game_id = 1;
+}
+
+message GetGameResponse {
+  // PENDING, ASSIGNED (playable), or ABORTED.
+  GameStatus status = 1;
+  // Once ASSIGNED, the route to play the game at: send Worker calls to
+  // "<worker_addr>/tictactoe.v1.Worker/...". Empty until then.
+  string worker_addr = 2 [(gnostic.openapi.v3.property) = {example: {yaml: "'/w/eyJhbGciOiJIUzI1NiJ9...'"}}];
+  string player_x = 3 [(gnostic.openapi.v3.property) = {example: {yaml: "'alice'"}}];
+  string player_o = 4 [(gnostic.openapi.v3.property) = {example: {yaml: "'bob'"}}];
+}
+
+message GetStatsRequest {
+  string user_id = 1;
+}
+
+message GetStatsResponse {
+  string user_id = 1;
+  int64 wins = 2;
+  int64 losses = 3;
+  int64 draws = 4;
+}

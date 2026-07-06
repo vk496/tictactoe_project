@@ -1,0 +1,16 @@
+# Base document merged into the generated OpenAPI spec (see buf.gen.yaml).
+openapi: 3.1.0
+info:
+  title: Tic-Tac-Toe API
+  version: v1
+  description: |
+    Client-facing ConnectRPC API, generated from the Protocol Buffer contracts.
+
+    Every method is unary and served over **HTTP POST** with a JSON body. This is
+    an RPC API, not a REST resource API: one Connect handler also speaks gRPC and
+    gRPC-Web (both POST-only), so reads and writes alike are POST — there are no
+    GET endpoints.
+
+    Lobby methods are served at `/tictactoe.v1.Lobby/<Method>` on a single origin.
+    Worker methods (`MakeMove`, `GetBoard`) are reached through the signed
+    `/w/<token>/` route that `GetGame` returns once a game is assigned.

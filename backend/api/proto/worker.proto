@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package tictactoe.v1;
+
+import "common.proto";
+import "gnostic/openapi/v3/annotations.proto";
+
+option go_package = "github.com/vk496/tictactoe_project/api/gen/tictactoev1;tictactoev1";
+
+// Worker hosts a single live game in memory and applies moves to it. Reach it at
+// the worker route GetGame returns once the game is ASSIGNED.
+service Worker {
+  // Place the caller's mark at (row, col). Rejects out-of-turn, occupied,
+  // out-of-bounds, or post-game moves. Returns the updated board.
+  rpc MakeMove(MakeMoveRequest) returns (GameView);
+  // Read the current board without moving — poll this for the opponent's move.
+  rpc GetBoard(GetBoardRequest) returns (GameView);
+}
+
+message MakeMoveRequest {
+  // The game being played.
+  string game_id = 1 [(gnostic.openapi.v3.property) = {example: {yaml: "'665f1e8c9a2b4d3f01a2b3c4'"}}];
+  // The moving player; must be player X or O, and it must be their turn.
+  string user_id = 2 [(gnostic.openapi.v3.property) = {example: {yaml: "'alice'"}}];
+  // Target row, 0-based from the top.
+  int32 row = 3;
+  // Target column, 0-based from the left.
+  int32 col = 4;
+}
+
+message GetBoardRequest {
+  string game_id = 1 [(gnostic.openapi.v3.property) = {example: {yaml: "'665f1e8c9a2b4d3f01a2b3c4'"}}];
+}
