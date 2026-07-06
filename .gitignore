@@ -1,0 +1,15 @@
+/bin/
+*.out
+.DS_Store
+demo/slides/node_modules/
+demo/slides/dist/
+demo/slides/.slidev/
+
+# Internal planning notes, not part of the published repo.
+PLAN.md
+
+# Generated code — produced by `buf generate` (see README "Code generation").
+# It is intentionally not committed: regenerate it before building locally, and
+# the Docker image generates it during the build.
+backend/api/gen/tictactoev1/
+backend/api/gen/openapi/openapi.yaml

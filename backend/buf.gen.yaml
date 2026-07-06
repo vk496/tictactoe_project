@@ -1,0 +1,14 @@
+version: v2
+plugins:
+  - local: protoc-gen-go
+    out: .
+    opt: module=github.com/vk496/tictactoe_project
+  - local: protoc-gen-connect-go
+    out: .
+    opt: module=github.com/vk496/tictactoe_project
+  # OpenAPI v3 for the client-facing API, generated from the same protos.
+  - local: protoc-gen-connect-openapi
+    out: api/gen/openapi
+    opt:
+      - path=openapi.yaml
+      - base=api/openapi.base.yaml

@@ -1,0 +1,3 @@
+# Generated code is produced during the image build (buf generate), never copied in.
+api/gen/tictactoev1/
+api/gen/openapi/openapi.yaml
