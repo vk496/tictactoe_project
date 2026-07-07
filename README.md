@@ -135,15 +135,24 @@ docker-compose.yml the whole stack   ·   ADR.md
 The Go bindings and the OpenAPI spec are generated from the `.proto` files and are
 **not committed** — the protos are the single source of truth. `docker compose up
 --build` generates them inside the image, so running the stack needs no extra step.
-For local `go build` / `go test`, generate them first (once per proto change).
-From `backend/`:
+
+For local `go build` / `go test`, bootstrap once from `backend/`:
 
 ```sh
-# one-time: install the generators
+# 1. install the generators — they land in $(go env GOPATH)/bin, which must be on PATH
 go install github.com/bufbuild/buf/cmd/buf@latest
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 go install connectrpc.com/connect/cmd/protoc-gen-connect-go@latest
 go install github.com/sudorandom/protoc-gen-connect-openapi@latest
 
-buf generate   # writes api/gen/tictactoev1/ (Go) + api/gen/openapi/openapi.yaml
+# 2. generate the code: api/gen/tictactoev1/ (Go) + api/gen/openapi/openapi.yaml
+buf generate
+
+# 3. fetch the module deps and confirm everything compiles
+go build ./...
 ```
+
+Rerun `buf generate` after any change to the `.proto` files. In an editor, the
+generated packages don't exist until step 2, so **restart the language server**
+after the first generation (VS Code: “Go: Restart Language Server”) — otherwise
+gopls keeps showing the imports red until it re-scans.
