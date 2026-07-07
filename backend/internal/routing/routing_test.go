@@ -7,36 +7,50 @@ import (
 	"github.com/vk496/tictactoe_project/internal/routing"
 )
 
-// ADR 7: a route token round-trips only with the right secret.
+const (
+	secret     = "shared-secret"
+	workerAddr = "http://worker-3:8080"
+	gameID     = "game-1"
+)
+
+// ADR 7: a token signed with the secret round-trips back to the same worker
+// address and game.
 func TestTokenRoundTrip(t *testing.T) {
-	secret := []byte("shared-secret")
-	tok, err := routing.Sign(secret, "game-1", "http://worker-3:8080", time.Hour)
+	token, err := routing.Sign([]byte(secret), gameID, workerAddr, time.Hour)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("sign: %v", err)
 	}
-	addr, gameID, err := routing.Verify(secret, tok)
+
+	gotAddr, gotGame, err := routing.Verify([]byte(secret), token)
 	if err != nil {
 		t.Fatalf("verify: %v", err)
 	}
-	if addr != "http://worker-3:8080" || gameID != "game-1" {
-		t.Fatalf("round-trip mismatch: addr=%q game=%q", addr, gameID)
+	if gotAddr != workerAddr || gotGame != gameID {
+		t.Fatalf("round-trip = (%q, %q); want (%q, %q)", gotAddr, gotGame, workerAddr, gameID)
 	}
 }
 
-// ADR 7: a forged, tampered or expired token is rejected — the gateway can never
+// ADR 7: a forged, tampered, or expired token is rejected — the gateway can never
 // be pointed at an arbitrary host.
 func TestTokenRejectsForgery(t *testing.T) {
-	secret := []byte("shared-secret")
-	tok, _ := routing.Sign(secret, "g", "http://w:8080", time.Hour)
+	valid, _ := routing.Sign([]byte(secret), gameID, workerAddr, time.Hour)
+	expired, _ := routing.Sign([]byte(secret), gameID, workerAddr, -time.Hour)
 
-	if _, _, err := routing.Verify([]byte("wrong-secret"), tok); err == nil {
-		t.Fatal("wrong secret should not verify")
+	tests := []struct {
+		name   string
+		secret string
+		token  string
+	}{
+		{"wrong secret", "other-secret", valid},
+		{"tampered token", secret, valid + "x"},
+		{"expired token", secret, expired},
 	}
-	if _, _, err := routing.Verify(secret, tok+"x"); err == nil {
-		t.Fatal("tampered token should not verify")
-	}
-	expired, _ := routing.Sign(secret, "g", "http://w:8080", -time.Hour)
-	if _, _, err := routing.Verify(secret, expired); err == nil {
-		t.Fatal("expired token should not verify")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, _, err := routing.Verify([]byte(tt.secret), tt.token); err == nil {
+				t.Fatal("expected verification to fail")
+			}
+		})
 	}
 }

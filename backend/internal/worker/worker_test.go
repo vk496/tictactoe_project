@@ -16,10 +16,14 @@ type fakePublisher struct{}
 
 func (fakePublisher) Publish(context.Context, string, any) error { return nil }
 
+func discardLogger() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
+
 // ADR 8: a worker holds a bounded number of games and refuses more when full.
 func TestWorkerCapacity(t *testing.T) {
-	svc := NewService(fakePublisher{}, "http://w:8080", 1, slog.New(slog.NewTextHandler(io.Discard, nil)))
-	svc.acquireTimeout = 10 * time.Millisecond // don't wait a full second for the refusal
+	svc := NewService(fakePublisher{}, "http://w:8080", 1, discardLogger())
+	svc.acquireTimeout = 10 * time.Millisecond // fail fast instead of waiting a full second
 
 	start := func(id string) error {
 		body, _ := json.Marshal(rabbitmq.StartGame{
@@ -32,9 +36,9 @@ func TestWorkerCapacity(t *testing.T) {
 	}
 
 	if err := start("g1"); err != nil {
-		t.Fatalf("first game should be accepted: %v", err)
+		t.Fatalf("first game (capacity 1) should be accepted: %v", err)
 	}
 	if err := start("g2"); !errors.Is(err, errAtCapacity) {
-		t.Fatalf("second game at capacity 1: want errAtCapacity, got %v", err)
+		t.Fatalf("second game: want errAtCapacity, got %v", err)
 	}
 }

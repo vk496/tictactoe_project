@@ -6,18 +6,26 @@ import (
 	"github.com/vk496/tictactoe_project/internal/config"
 )
 
-// ADR 3: NewGame validates the rules — win length must be >= 1 and <= board size.
+// ADR 3: NewGame validates the rules — the board is at least 3×3 and the win
+// length is between 1 and the board size.
 func TestGameConfigValidation(t *testing.T) {
-	if _, err := config.NewGame(); err != nil {
-		t.Fatalf("defaults should be valid: %v", err)
+	tests := []struct {
+		name    string
+		opts    []config.Option
+		wantErr bool
+	}{
+		{"defaults", nil, false},
+		{"5x5, win 4", []config.Option{config.WithBoardSize(5), config.WithWinLength(4)}, false},
+		{"win length exceeds board", []config.Option{config.WithBoardSize(3), config.WithWinLength(5)}, true},
+		{"board smaller than 3", []config.Option{config.WithBoardSize(2)}, true},
 	}
-	if _, err := config.NewGame(config.WithBoardSize(5), config.WithWinLength(4)); err != nil {
-		t.Fatalf("5x5/K4 should be valid: %v", err)
-	}
-	if _, err := config.NewGame(config.WithBoardSize(3), config.WithWinLength(5)); err == nil {
-		t.Fatal("win length > board size should be rejected")
-	}
-	if _, err := config.NewGame(config.WithBoardSize(2)); err == nil {
-		t.Fatal("board size < 3 should be rejected (1 or 2 is not a real game)")
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := config.NewGame(tt.opts...)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("NewGame() error = %v, wantErr = %v", err, tt.wantErr)
+			}
+		})
 	}
 }
