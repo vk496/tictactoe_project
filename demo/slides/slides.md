@@ -191,6 +191,20 @@ and a worker's address can change.
 
 ---
 
+# The API — generated from one contract
+
+The client-facing API is defined once in **Protocol Buffers** and served with
+**ConnectRPC**: one handler speaks gRPC, gRPC-Web, and plain JSON over HTTP.
+
+- **Everything is POST.** It's an RPC API, not REST — gRPC and gRPC-Web are
+  POST-only, so reads and writes alike are POST.
+- **Generated, not committed.** `buf generate` writes the Go bindings *and* an
+  **OpenAPI** spec from the same protos; the protos are the single source of truth.
+- **Docs that can't drift.** The spec is served at `/openapi.yaml`, with an
+  interactive view at `/docs.html`, straight from that contract.
+
+---
+
 # Design patterns
 
 | Pattern | Where | Why |
@@ -201,7 +215,7 @@ and a worker's address can change.
 | **Facade** | Connect handlers | thin layer between RPC and the domain |
 | **Functional options** | `config.NewGame(...)` | idiomatic Go configuration |
 
-<div class="mt-4 opacity-80">Mostly standard library. External deps: ConnectRPC, protobuf, amqp091, JWT, env.</div>
+<div class="mt-4 opacity-80">Mostly standard library. Deps: ConnectRPC, protobuf, amqp091, JWT, env — plus buf + gnostic for API codegen.</div>
 
 ---
 
@@ -262,7 +276,7 @@ Everything (game, API, slides, broker dashboard):
 docker compose up --build
 ```
 
-Game: **http://localhost:8000** — open two tabs &nbsp;·&nbsp; Slides: **http://localhost:8100**
+Game **http://localhost:8000** (two tabs) &nbsp;·&nbsp; API docs **/docs.html** &nbsp;·&nbsp; Slides **http://localhost:8100**
 
 <div class="mt-6 opacity-70">
 Go · ConnectRPC · RabbitMQ · Docker Compose · vanilla-JS client
